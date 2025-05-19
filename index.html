@@ -1,0 +1,207 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SSDC Strict Path Simulation</title>
+  <style>
+    body { font-family: Arial, sans-serif; display: flex; justify-content: center; }
+    .container { display: flex; margin-top: 20px; gap: 40px; }
+    table { border-collapse: collapse; }
+    td {
+      width: 30px; height: 30px;
+      border: 1px solid #999;
+      text-align: center;
+      vertical-align: middle;
+    }
+    .car { background-color: lightblue; }
+    .goal { background-color: lightgreen; }
+    .wall { background-color: #444; }
+    .slope { background-color: #b2ebf2; }
+    .scurve { background-color: #d1c4e9; }
+    .crank { background-color: #f8bbd0; }
+    .entry { background-color: #80cbc4; }
+    .exit { background-color: #ffcc80; }
+    .legend {
+      font-size: 14px;
+      border-left: 2px solid #ccc;
+      padding-left: 20px;
+    }
+    .legend div {
+      margin-bottom: 10px;
+    }
+    .swatch {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div>
+    <h3>SSDC Strict Path Simulation</h3>
+    <table id="grid"></table>
+<p>Checkers: <span id="checker-scurve">S-Curve ❌</span> | <span id="checker-crank">Crank ❌</span> | <span id="checker-slope">Slope ❌</span></p>
+        <p>Score: <span id="score">0</span> | High Score: <span id="highscore">0</span></p>
+    <p>Attempts: <span id="attempts">0</span></p>
+    <p>History: <span id="history">[]</span></p>
+  </div>
+  <div class="legend">
+    <h4>Legend</h4>
+    <div><span class="swatch" style="background-color:#b2ebf2;"></span> Slope (+5)</div>
+    <div><span class="swatch" style="background-color:#d1c4e9;"></span> S-Curve (+5)</div>
+    <div><span class="swatch" style="background-color:#f8bbd0;"></span> Crank (+5)</div>
+    <div><span class="swatch" style="background-color:#80cbc4;"></span> Entry Point</div>
+    <div><span class="swatch" style="background-color:#ffcc80;"></span> Exit Point</div>
+    <div><span class="swatch" style="background-color:#444;"></span> Wall</div>
+    <div><span class="swatch" style="background-color:#eee;"></span> Road (-1)</div>
+    <div><span class="swatch" style="background-color:lightgreen;"></span> Goal (+100)</div>
+  </div>
+</div>
+<script>
+const map = [[-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1], [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 3, 3, 3, 0, 0, 0, 0, 0, -1, -1, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, -1], [-1, 0, 2, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, -1], [-1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, -1], [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]];
+const meta = {"slope": {
+  "tiles": [[15, 2], [16, 2], [17, 2], [18, 2]],
+  "entry": [14, 2],
+  "exit": [18, 2],
+  "path": [[15, 2], [16, 2], [17, 2], [18, 2]]
+}, "scurve": {
+  "tiles": [[8, 2], [8, 3], [8, 4], [9, 4], [10, 4], [10, 3], [10, 2], [11, 2]],
+  "entry": [7, 2],
+  "exit": [11, 2],
+  "path": [[8, 2], [8, 3], [8, 4], [9, 4], [10, 4], [10, 3], [10, 2], [11, 2]]
+}, "crank": {
+  "tiles": [[2, 8], [2, 9], [2, 10], [3, 10], [4, 10], [4, 11]],
+  "entry": [2, 7],
+  "exit": [4, 11],
+  "path": [[2, 8], [2, 9], [2, 10], [3, 10], [4, 10], [4, 11]]
+}, "goal": [17, 17]};
+
+const goal = meta.goal;
+const pathMap = {
+  slope: meta.slope.path.map(p => p.join(",")),
+  scurve: meta.scurve.path.map(p => p.join(",")),
+  crank: meta.crank.path.map(p => p.join(","))
+};
+const entries = {
+  slope: meta.slope.entry.join(","),
+  scurve: meta.scurve.entry.join(","),
+  crank: meta.crank.entry.join(",")
+};
+const exits = {
+  slope: meta.slope.exit.join(","),
+  scurve: meta.scurve.exit.join(","),
+  crank: meta.crank.exit.join(",")
+};
+
+let score = 0, highScore = 0, attempts = 0;
+let scores = [], visited = new Set(), completed = new Set();
+let inZone = null, pos = [1, 1];
+let pathIndex = 0;
+
+function drawGrid() {
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  for (let i = 0; i < map.length; i++) {
+    const row = document.createElement("tr");
+    for (let j = 0; j < map[0].length; j++) {
+      const key = i + "," + j;
+      const cell = document.createElement("td");
+      if (i === pos[0] && j === pos[1]) {
+        cell.className = "car"; cell.textContent = "🚗";
+      } else if (goal[0] === i && goal[1] === j) {
+        cell.className = "goal";
+      } else if (key === entries.slope || key === entries.scurve || key === entries.crank) {
+        cell.className = "entry";
+      } else if (key === exits.slope || key === exits.scurve || key === exits.crank) {
+        cell.className = "exit";
+      } else if (map[i][j] === -1) {
+        cell.className = "wall";
+      } else if (meta.slope.tiles.some(p => p[0] === i && p[1] === j)) {
+        cell.className = "slope";
+      } else if (meta.scurve.tiles.some(p => p[0] === i && p[1] === j)) {
+        cell.className = "scurve";
+      } else if (meta.crank.tiles.some(p => p[0] === i && p[1] === j)) {
+        cell.className = "crank";
+      } else {
+        cell.style.backgroundColor = "#eee";
+      }
+      row.appendChild(cell);
+    }
+    grid.appendChild(row);
+  }
+}
+
+function reset(msg="Reset!") {
+  scores.push(score);
+  highScore = Math.max(highScore, score);
+  attempts++;
+  score = 0; pos = [1, 1]; inZone = null; pathIndex = 0;
+  visited.clear(); completed.clear();
+  document.getElementById("score").textContent = score;
+  document.getElementById("highscore").textContent = highScore;
+  document.getElementById("attempts").textContent = attempts;
+  document.getElementById("history").textContent = "[" + scores.join(", ") + "]";
+  drawGrid();
+}
+
+function move(dx, dy) {
+  const [x, y] = pos;
+  const nx = x + dx, ny = y + dy;
+  const newKey = nx + "," + ny;
+  const prevKey = x + "," + y;
+
+  if (nx < 0 || ny < 0 || nx >= map.length || ny >= map[0].length || map[nx][ny] === -1) {
+    return reset("Wall hit!");
+  }
+
+  if (inZone === null) {
+    if (newKey === entries.slope) { inZone = "slope"; pathIndex = 0; }
+    else if (newKey === entries.scurve) { inZone = "scurve"; pathIndex = 0; }
+    else if (newKey === entries.crank) { inZone = "crank"; pathIndex = 0; }
+    else if (map[nx][ny] > 1) {
+      return reset("Entered zone incorrectly!");
+    }
+  } else {
+    const requiredPath = pathMap[inZone];
+    if (newKey !== requiredPath[pathIndex]) return reset("Wrong path direction!");
+    pathIndex++;
+    if (newKey === exits[inZone]) {
+      completed.add(inZone);
+      document.getElementById("checker-" + inZone).textContent = inZone.charAt(0).toUpperCase() + inZone.slice(1) + " ✅";
+      inZone = null;
+      pathIndex = 0;
+    }
+  }
+
+  pos = [nx, ny];
+  if (!visited.has(newKey)) {
+    visited.add(newKey);
+    if (map[nx][ny] > 1) {
+      score += 5;
+    } else if (goal[0] === nx && goal[1] === ny) {
+      if (completed.size === 3) {
+        score += 100;
+        } else return reset("Complete all zones first!");
+    } else {
+      score -= 1;
+    }
+  }
+
+  document.getElementById("score").textContent = score;
+  drawGrid();
+}
+
+document.addEventListener("keydown", function(e) {
+  if (e.key === "ArrowUp") move(-1, 0);
+  else if (e.key === "ArrowDown") move(1, 0);
+  else if (e.key === "ArrowLeft") move(0, -1);
+  else if (e.key === "ArrowRight") move(0, 1);
+});
+drawGrid();
+</script>
+</body>
+</html>
