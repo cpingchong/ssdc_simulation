@@ -37,13 +37,36 @@
       margin-right: 8px;
       vertical-align: middle;
     }
-  </style>
+  button {
+  font-size: 24px;
+  padding: 16px 24px;
+  margin: 8px;
+  border-radius: 8px;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+}
+</style>
 </head>
 <body>
 <div class="container">
   <div>
     <h3>SSDC Strict Path Simulation</h3>
     <table id="grid"></table>
+<div style="margin-top:20px; text-align:center;">
+  <div>
+    <button onclick="move(-1,0)">⬆️</button>
+  </div>
+  <div>
+    <button onclick="move(0,-1)">⬅️</button>
+    <button onclick="move(1,0)">⬇️</button>
+    <button onclick="move(0,1)">➡️</button>
+  </div>
+</div>
+
+<p>Checkers: <span id="checker-scurve">S-Curve ❌</span> | <span id="checker-crank">Crank ❌</span> | <span id="checker-slope">Slope ❌</span></p>
+<p>Learning Rate: <span id="alpha">0.1</span> | Discount Factor: <span id="gamma">0.9</span></p>
+<h4>Q-Table</h4>
+<table border="1" cellpadding="4" id="qtable"><thead><tr><th>State → Action</th><th>Q-Value</th></tr></thead><tbody id="qtable-body"></tbody></table>
 <p>Checkers: <span id="checker-scurve">S-Curve ❌</span> | <span id="checker-crank">Crank ❌</span> | <span id="checker-slope">Slope ❌</span></p>
         <p>Score: <span id="score">0</span> | High Score: <span id="highscore">0</span></p>
     <p>Attempts: <span id="attempts">0</span></p>
@@ -62,6 +85,45 @@
   </div>
 </div>
 <script>
+let qtable = JSON.parse(localStorage.getItem("qtable") || "{}");
+const alpha = 0.1;  // Learning rate
+const gamma = 0.9;  // Discount factor
+
+function updateQTable(prevKey, newKey, reward) {
+  const key = prevKey + "→" + newKey;
+  const maxQ = Math.max(...Object.entries(qtable)
+    .filter(([k, _]) => k.startsWith(newKey + "→"))
+    .map(([_, v]) => v), 0);
+  if (!qtable[key]) qtable[key] = 0;
+  qtable[key] = qtable[key] + alpha * (reward + gamma * maxQ - qtable[key]);
+  localStorage.setItem("qtable", JSON.stringify(qtable));
+  renderQTable();
+}
+
+function renderQTable() {
+  const tbody = document.getElementById("qtable-body");
+  tbody.innerHTML = "";
+  let bestAction = {};
+  for (const [key, value] of Object.entries(qtable)) {
+    const [state, next] = key.split("→");
+    if (!(state in bestAction) || value > qtable[state + "→" + bestAction[state]]) {
+      bestAction[state] = next;
+    }
+  }
+  for (const [key, value] of Object.entries(qtable)) {
+    const row = document.createElement("tr");
+    const td1 = document.createElement("td");
+    const td2 = document.createElement("td");
+    td1.textContent = key;
+    td2.textContent = value.toFixed(2);
+    if (key.endsWith("→" + bestAction[key.split("→")[0]])) {
+      row.style.backgroundColor = "#c8e6c9";  // green highlight for best action
+    }
+    row.appendChild(td1);
+    row.appendChild(td2);
+    tbody.appendChild(row);
+  }
+}
 const map = [[-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1], [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 3, 3, 3, 0, 0, 0, 0, 0, -1, -1, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, -1], [-1, 0, 2, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, -1], [-1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, -1], [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1], [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]];
 const meta = {"slope": {
   "tiles": [[15, 2], [16, 2], [17, 2], [18, 2]],
@@ -146,6 +208,7 @@ function reset(msg="Reset!") {
   document.getElementById("attempts").textContent = attempts;
   document.getElementById("history").textContent = "[" + scores.join(", ") + "]";
   drawGrid();
+renderQTable();
 }
 
 function move(dx, dy) {
@@ -179,6 +242,8 @@ function move(dx, dy) {
 
   pos = [nx, ny];
   if (!visited.has(newKey)) {
+    const reward = map[nx][ny] > 1 ? 5 : (goal[0] === nx && goal[1] === ny ? 100 : -1);
+    updateQTable(prevKey, newKey, reward);
     visited.add(newKey);
     if (map[nx][ny] > 1) {
       score += 5;
@@ -193,6 +258,7 @@ function move(dx, dy) {
 
   document.getElementById("score").textContent = score;
   drawGrid();
+renderQTable();
 }
 
 document.addEventListener("keydown", function(e) {
@@ -202,6 +268,7 @@ document.addEventListener("keydown", function(e) {
   else if (e.key === "ArrowRight") move(0, 1);
 });
 drawGrid();
+renderQTable();
 </script>
 </body>
 </html>
